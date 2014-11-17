@@ -1,0 +1,30 @@
+#!/bin/sh
+
+ALL=3
+RAN=0
+
+if [ "$V8_HOME" = ""]; then
+  echo "V8_HOME not set, skipping V8 target."
+else
+  echo "Running on V8..."
+  "${V8_HOME}/d8" $1
+  RAN=$[RAN+1]
+fi
+
+if [ "$SPIDERMONKEY_HOME" = "" ]; then
+  echo "SPIDERMONKEY_HOME not set, skipping SpiderMonkey target."
+else
+  echo "Running on SpiderMonkey..."
+  ${SPIDERMONKEY_HOME}/js -m -n -a -f $1
+  RAN=$[RAN+1]
+fi
+
+if [ "$JSC_HOME" = "" ]; then
+  echo "JSC_HOME not set, skipping JavaScriptCore target."
+else
+  echo "Testing with JavaScriptCore..."
+  "${JSC_HOME}/jsc" -f $1
+  RAN=$[RAN+1]
+fi
+
+echo "$RAN out of $ALL possible JS targets"

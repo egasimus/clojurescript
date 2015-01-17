@@ -1,22 +1,36 @@
 #!/bin/sh
 
+CLOJURE_VERSION=1.5.1
+CLOJURE_ZIP=clojure-$CLOJURE_VERSION.zip
+CLOJURE_URL=http://repo1.maven.org/maven2/org/clojure/clojure/$CLOJURE_VERSION/$CLOJURE_ZIP
+CLOJURE_DIR=clojure-$CLOJURE_VERSION
+CLOJURE_JAR=$CLOJURE_DIR/clojure-$CLOJURE_VERSION.jar
+
+LIBRARY_ZIP=closure-library-20130212-95c19e7f0f5f.zip
+LIBRARY_URL=http://closure-library.googlecode.com/files/$LIBRARY_ZIP
+LIBRARY_TRUNK_URL=http://closure-library.googlecode.com/svn/trunk/
+
+COMPILER_ZIP=compiler-latest.zip
+COMPILER_URL=http://dl.google.com/closure-compiler/$COMPILER_ZIP
+
+RHINO_DIR=rhino1_7R3
+RHINO_ZIP=$RHINO_DIR.zip
+RHINO_JAR=$RHINO_DIR/js.jar
+RHINO_URL=http://ftp.mozilla.org/pub/mozilla.org/js/$RHINO_ZIP
+
 set -e
 
 mkdir -p lib
 
-echo "Fetching Clojure..."
-curl -O -s http://repo1.maven.org/maven2/org/clojure/clojure/1.5.1/clojure-1.5.1.zip
-unzip -qu clojure-1.5.1.zip
-echo "Copying clojure-1.5.1/clojure-1.5.1.jar to lib/clojure.jar..."
-cp clojure-1.5.1/clojure-1.5.1.jar lib/clojure.jar
-echo "Cleaning up Clojure directory..."
-rm -rf clojure-1.5.1/
-echo "Cleaning up Clojure archive..."
-rm clojure-1.5.1.zip
+# Clojure jar
+echo -e "\nFetching Clojure..." && curl --progress-bar -O $CLOJURE_URL
+echo "Extracting Clojure..."    && unzip -qu $CLOJURE_ZIP
+echo "Copying Clojure jar..."   && cp $CLOJURE_JAR lib/clojure.jar
+echo "Cleaning up..."           && rm -rf $CLOJURE_DIR $CLOJURE_ZIP
 
-echo "Fetching Google Closure library..."
-mkdir -p closure/library
-cd closure/library
+# Closure library
+echo -e "\nFetching Google Closure library..."
+mkdir -p closure/library && cd closure/library
 if [ "$1" = "--closure-library-head" ] ; then
     echo "Building against HEAD of Google Closure library..."
 
@@ -30,41 +44,29 @@ if [ "$1" = "--closure-library-head" ] ; then
     else
         echo "Checking out HEAD of Google Closure library..."
         rm -rf *
-        svn checkout -q --non-interactive http://closure-library.googlecode.com/svn/trunk/ ./
+        svn checkout -q --non-interactive $LIBRARY_TRUNK_URL ./
     fi
 else
-    echo "Fetching Google Closure library..."
-    f=closure-library-20130212-95c19e7f0f5f.zip
-    curl -O -s "http://closure-library.googlecode.com/files/$f"
-    unzip -qu "$f"
-    echo "Cleaning up Google Closure library archive..."
-    rm "$f"
+    echo "Downloading $LIBRARY_ZIP"                      && curl --progress-bar -O $LIBRARY_URL
+    echo "Extractiong $LIBRARY_ZIP"                      && unzip -qu $LIBRARY_ZIP
+    echo "Cleaning up Google Closure library archive..." && rm $LIBRARY_ZIP
 fi
 cd ..
 
-echo "Fetching Google Closure compiler..."
-mkdir -p compiler
-cd compiler
-curl -O -s http://dl.google.com/closure-compiler/compiler-latest.zip
-unzip -qu compiler-latest.zip
-echo "Cleaning up Google Closure compiler archive..."
-rm compiler-latest.zip
+# Closure compiler
+mkdir -p compiler && cd compiler
+echo -e "\nFetching Google Closure compiler..."       && curl --progress-bar -O $COMPILER_URL
+echo "Extracting Google Closure compiler..."          && unzip -qu $COMPILER_ZIP
+echo "Cleaning up Google Closure compiler archive..." && rm $COMPILER_ZIP
 cd ../..
-echo "Building lib/goog.jar..."
-echo "jar cf ./lib/goog.jar -C closure/library/closure/ goog"
-jar cf ./lib/goog.jar -C closure/library/closure/ goog
+echo "Building lib/goog.jar..."       && jar cf ./lib/goog.jar -C closure/library/closure/ goog
+echo -e "Copying lib/compiler.jar..." && cp closure/compiler/compiler.jar lib
 
-echo "Fetching Rhino..."
-curl -O -s http://ftp.mozilla.org/pub/mozilla.org/js/rhino1_7R3.zip
-unzip -qu rhino1_7R3.zip
-echo "Copying rhino1_7R3/js.jar to lib/js.jar..."
-cp rhino1_7R3/js.jar lib/js.jar
-echo "Cleaning up Rhino directory..."
-rm -rf rhino1_7R3/
-echo "Cleaning up Rhino archive..."
-rm rhino1_7R3.zip
+# Rhino
+echo -e "\nFetching Rhino..."                     && curl  --progress-bar -O -s $RHINO_URL
+echo "Extracting Rhino..."                        && unzip -qu $RHINO_ZIP
+echo "Copying rhino1_7R3/js.jar to lib/js.jar..." && cp $RHINO_JAR lib/js.jar
+echo "Cleaning up Rhino directory..."             && rm -rf $RHINO_DIR
+echo "Cleaning up Rhino archive..."               && rm $RHINO_ZIP
 
-echo "Copying closure/compiler/compiler.jar to lib/compiler.jar"
-cp closure/compiler/compiler.jar lib
-
-echo "[Bootstrap Completed]"
+echo -e "\nBootstrapping complete."

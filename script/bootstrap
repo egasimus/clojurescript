@@ -1,43 +1,52 @@
 #!/bin/sh
 
+
 set -e
 
-CLOJURE_RELEASE="1.6.0"
-CLOSURE_RELEASE="20140625"
-DJSON_RELEASE="0.2.3"
-GCLOSURE_LIB_RELEASE="0.0-20140718-946a7d39"
-RHINO_RELEASE="1_7R3"
-TREADER_RELEASE="0.8.10"
 
 # check dependencies
 curl -V >/dev/null  || { echo "cURL is missing, or not on your system path."; exit 1; }
 unzip -v >/dev/null || { echo "The 'unzip' utility is missing, or not on your system path."; exit 1; }
 
+
+MAVEN="https://repo1.maven.org/maven2"
+CURL="curl --retry 3 -O --progress-bar"
+
+
 mkdir -p lib
 
-echo "Fetching Clojure..."
-curl -O -s https://repo1.maven.org/maven2/org/clojure/clojure/$CLOJURE_RELEASE/clojure-$CLOJURE_RELEASE.zip || { echo "Download failed."; exit 1; }
-unzip -qu clojure-$CLOJURE_RELEASE.zip
-echo "Copying clojure-$CLOJURE_RELEASE/clojure-$CLOJURE_RELEASE.jar to lib/clojure.jar..."
-cp clojure-$CLOJURE_RELEASE/clojure-$CLOJURE_RELEASE.jar lib/clojure.jar
 
-echo "Cleaning up Clojure directory..."
-rm -rf clojure-$CLOJURE_RELEASE/
-echo "Cleaning up Clojure archive..."
-rm clojure-$CLOJURE_RELEASE.zip
+# clojure
+CLOJURE_RELEASE="1.6.0"
+CLOJURE_ZIP="clojure-$CLOJURE_RELEASE.zip"
+CLOJURE_URL="$MAVEN/org/clojure/clojure/$CLOJURE_RELEASE/clojure-$CLOJURE_RELEASE.zip"
+CLOJURE_DIR="clojure-$CLOJURE_RELEASE"
+CLOJURE_JAR="$CLOJURE_DIR/clojure-$CLOJURE_RELEASE.jar"
+echo -e "\nFetching Clojure...\n$CLOJURE_URL" && $CURL $CLOJURE_URL || { echo "Download failed."; exit 1; }
+echo "Extracting Clojure..."                  && unzip -qu $CLOJURE_ZIP
+echo "Copying lib/clojure.jar..."             && cp $CLOJURE_JAR lib/clojure.jar
+echo "Cleaning..."                            && rm -rf $CLOJURE_DIR $CLOJURE_ZIP
 
-echo "Fetching data.json..."
-curl --retry 3 -O -s https://repo1.maven.org/maven2/org/clojure/data.json/$DJSON_RELEASE/data.json-$DJSON_RELEASE.jar || { echo "Download failed."; exit 1; }
-echo "Copying data.json-$DJSON_RELEASE.jar to lib/data.json-$DJSON_RELEASE.jar..."
-cp data.json-$DJSON_RELEASE.jar lib/data.json-$DJSON_RELEASE.jar
-echo "Cleaning up data.json..."
-rm data.json-$DJSON_RELEASE.jar
 
-echo "Fetching Google Closure library..."
-mkdir -p closure/library
-cd closure/library
+# data.json
+DJSON_RELEASE="0.2.3"
+DJSON_URL="$MAVEN/org/clojure/data.json/$DJSON_RELEASE/data.json-$DJSON_RELEASE.jar"
+DJSON_JAR="data.json-$DJSON_RELEASE.jar"
+echo -e "\nFetching data.json...\n$DJSON_URL"      && $CURL $DJSON_URL || { echo "Download failed."; exit 1; }
+echo "Copying lib/data.json-$DJSON_RELEASE.jar..." && cp $DJSON_JAR lib/data.json-$DJSON_RELEASE.jar
+echo "Cleaning up data.json..."                    && rm $DJSON_JAR
+
+
+# google closure library
+CLOSURE_LIB_RELEASE="0.0-20140718-946a7d39"
+CLOSURE_LIB_TRUNK="https://closure-library.googlecode.com/svn/trunk/"
+CLOSURE_LIB_JAR="google-closure-library-$CLOSURE_LIB_RELEASE.jar"
+CLOSURE_LIB_URL="$MAVEN/org/clojure/google-closure-library/$CLOSURE_LIB_RELEASE/$CLOSURE_LIB_JAR"
+CLOSURE_THIRDPARTY_JAR="google-closure-library-third-party-$CLOSURE_LIB_RELEASE.jar"
+CLOSURE_THIRDPARTY_URL="$MAVEN/org/clojure/google-closure-library-third-party/$CLOSURE_LIB_RELEASE/$CLOSURE_THIRDPARTY_JAR"
+mkdir -p closure/library && cd closure/library
 if [ "$1" = "--closure-library-head" ] ; then
-    echo "Building against HEAD of Google Closure library..."
+    echo -e "\nBuilding against HEAD of Google Closure library..."
 
     # Check if svn present
     type svn >/dev/null 2>&1 || { echo >&2 "Need svn command to checkout HEAD of Google Closure library. Aborting."; exit 1; }
@@ -49,52 +58,55 @@ if [ "$1" = "--closure-library-head" ] ; then
     else
         echo "Checking out HEAD of Google Closure library..."
         rm -rf *
-        svn checkout -q --non-interactive https://closure-library.googlecode.com/svn/trunk/ ./
+        svn checkout -q --non-interactive $CLOSURE_LIB_TRUNK ./
     fi
 else
-    curl --retry 3 -O -s https://repo1.maven.org/maven2/org/clojure/google-closure-library/$GCLOSURE_LIB_RELEASE/google-closure-library-$GCLOSURE_LIB_RELEASE.jar || { echo "Download failed."; exit 1; }
-    cp google-closure-library-$GCLOSURE_LIB_RELEASE.jar ../../lib/google-closure-library-$GCLOSURE_LIB_RELEASE.jar
-    rm google-closure-library-$GCLOSURE_LIB_RELEASE.jar
+    echo -e "\nFetching Google Closure library...\n$CLOSURE_LIB_URL" &&  $CURL $CLOSURE_LIB_URL || { echo "Download failed."; exit 1; }
+    cp $CLOSURE_LIB_JAR ../../lib/$CLOSURE_LIB_JAR
+    rm $CLOSURE_LIB_JAR
 
-    echo "Fetching Google Closure third party library..."
-    curl --retry 3 -O -s https://repo1.maven.org/maven2/org/clojure/google-closure-library-third-party/$GCLOSURE_LIB_RELEASE/google-closure-library-third-party-$GCLOSURE_LIB_RELEASE.jar || { echo "Download failed."; exit 1; }
-    cp google-closure-library-third-party-$GCLOSURE_LIB_RELEASE.jar ../../lib/google-closure-library-third-party-$GCLOSURE_LIB_RELEASE.jar
-    rm google-closure-library-third-party-$GCLOSURE_LIB_RELEASE.jar
+    echo -e "\nFetching Google Closure third party library...\n$CLOSURE_THIRDPARTY_URL" && $CURL $CLOSURE_THIRDPARTY_URL || { echo "Download failed."; exit 1; }
+    cp $CLOSURE_THIRDPARTY_JAR ../../lib/$CLOSURE_THIRDPARTY_JAR
+    rm $CLOSURE_THIRDPARTY_JAR
 fi
 cd ..
 
-echo "Fetching Google Closure compiler..."
-mkdir -p compiler
-cd compiler
-curl --retry 3 -O -s http://dl.google.com/closure-compiler/compiler-$CLOSURE_RELEASE.zip || { echo "Download failed."; exit 1; }
-unzip -qu compiler-$CLOSURE_RELEASE.zip
-echo "Cleaning up Google Closure compiler archive..."
-rm compiler-$CLOSURE_RELEASE.zip
+
+# google closure compiler
+CLOSURE_COMPILER_RELEASE="20140625"
+CLOSURE_COMPILER_ZIP="compiler-$CLOSURE_COMPILER_RELEASE.zip"
+CLOSURE_COMPILER_URL="http://dl.google.com/closure-compiler/$CLOSURE_COMPILER_ZIP"
+mkdir -p compiler && cd compiler
+echo -e "\nFetching Google Closure compiler...\n$CLOSURE_COMPILER_URL" && $CURL $CLOSURE_COMPILER_URL || { echo "Download failed."; exit 1; }
+echo "Extracting Google Closure compiler..."                           && unzip -qu $CLOSURE_COMPILER_ZIP 
+echo "Cleaning up Google Closure compiler archive..."                  && rm $CLOSURE_COMPILER_ZIP
 cd ../..
 
 if [ "$1" = "--closure-library-head" ] ; then
-    echo "Building lib/goog.jar..."
-    echo "jar cf ./lib/goog.jar -C closure/library/closure/ goog"
-    jar cf ./lib/goog.jar -C closure/library/closure/ goog
+    echo "Building lib/goog.jar..." && jar cf ./lib/goog.jar -C closure/library/closure/ goog
 fi
+echo "Copying lib/compiler.jar..." && cp closure/compiler/compiler.jar lib
 
-echo "Fetching Rhino..."
-curl --retry 3 -O -s https://ftp.mozilla.org/pub/mozilla.org/js/rhino$RHINO_RELEASE.zip || { echo "Download failed."; exit 1; }
-unzip -qu rhino$RHINO_RELEASE.zip
-echo "Copying rhino$RHINO_RELEASE/js.jar to lib/js.jar..."
-cp rhino$RHINO_RELEASE/js.jar lib/js.jar
-echo "Cleaning up Rhino directory..."
-rm -rf rhino$RHINO_RELEASE/
-echo "Cleaning up Rhino archive..."
-rm rhino$RHINO_RELEASE.zip
 
-echo "Copying closure/compiler/compiler.jar to lib/compiler.jar"
-cp closure/compiler/compiler.jar lib
+# rhino
+RHINO_RELEASE="1_7R3"
+RHINO_DIR="rhino$RHINO_RELEASE"
+RHINO_ZIP="$RHINO_DIR.zip"
+RHINO_URL="https://ftp.mozilla.org/pub/mozilla.org/js/$RHINO_ZIP"
+RHINO_JAR="$RHINO_DIR/js.jar"
+echo -e "\nFetching Rhino...\n$RHINO_URL" && $CURL $RHINO_URL || { echo "Download failed."; exit 1; }
+echo "Extracting Rhino..."                && unzip -qu $RHINO_ZIP
+echo "Copying lib/js.jar..."              && cp $RHINO_JAR lib/js.jar
+echo "Cleaning up..."                     && rm -rf $RHINO_DIR $RHINO_ZIP
 
-echo "Fetching tools.reader $TREADER_RELEASE ..."
-curl --retry 3 -O -s https://repo1.maven.org/maven2/org/clojure/tools.reader/$TREADER_RELEASE/tools.reader-$TREADER_RELEASE.jar || { echo "Download failed."; exit 1; }
 
-echo "Moving tools.reader.jar to lib/tools.reader.jar"
-mv tools.reader-$TREADER_RELEASE.jar lib/tools.reader-$TREADER_RELEASE.jar
+# tools.reader
+TREADER_RELEASE="0.8.10"
+TREADER_JAR="tools.reader-$TREADER_RELEASE.jar"
+TREADER_URL="$MAVEN/org/clojure/tools.reader/$TREADER_RELEASE/$TREADER_JAR"
+echo -e "\nFetching tools.reader $TREADER_RELEASE...\n$TREADER_URL" && $CURL $TREADER_URL || { echo "Download failed."; exit 1; }
+echo "Moving lib/tools.reader.jar..."                               && mv $TREADER_JAR lib/$TREADER_JAR
 
-echo "[Bootstrap Completed]"
+
+# we're done
+echo -e "\n[Bootstrap Completed]"
